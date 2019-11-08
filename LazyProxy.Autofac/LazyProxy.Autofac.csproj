@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <Version>0.1.0</Version>
+        <PackageId>LazyProxy.Autofac</PackageId>
+        <Company>ServiceTitan, Inc.</Company>
+        <Authors>ServiceTitan, Inc.</Authors>
+        <Copyright>Copyright ServiceTitan, Inc.</Copyright>
+        <PackageProjectUrl>https://github.com/servicetitan/lazy-proxy-autofac</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/servicetitan/lazy-proxy-autofac/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/servicetitan/lazy-proxy-autofac</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>autofac container lazy injection proxy dynamic runtime wrapper</PackageTags>
+        <Description>Lazy injection for Autofac container</Description>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Autofac" Version="4.9.4" />
+        <PackageReference Include="LazyProxy" Version="0.1.5" />
+    </ItemGroup>
+
+</Project>
