@@ -384,25 +384,20 @@ namespace LazyProxy.Autofac.Tests
         }
 
         [Theory]
-        [InlineData(ServiceLifetime.Unknown, null)]
-        [InlineData(ServiceLifetime.Unknown, "name")]
-        [InlineData(ServiceLifetime.InstancePerDependency, null)]
-        [InlineData(ServiceLifetime.InstancePerDependency, "name")]
-        public void InstancePerDependencyServiceLifetimeMustBeActual(ServiceLifetime lifetime, string name) =>
+        [InlineData(null)]
+        [InlineData("name")]
+        public void InstancePerDependencyServiceLifetimeMustBeActual(string name) =>
             AssertInstancePerDependencyServiceLifetimeMustBeActual<IService>(
-                typeof(IService), typeof(Service), lifetime, name);
+                typeof(IService), typeof(Service), name);
 
         [Theory]
-        [InlineData(ServiceLifetime.Unknown, null)]
-        [InlineData(ServiceLifetime.Unknown, "name")]
-        [InlineData(ServiceLifetime.InstancePerDependency, null)]
-        [InlineData(ServiceLifetime.InstancePerDependency, "name")]
-        public void InstancePerDependencyServiceLifetimeMustBeActualForOpenGenericService(
-            ServiceLifetime lifetime, string name)
+        [InlineData(null)]
+        [InlineData("name")]
+        public void InstancePerDependencyServiceLifetimeMustBeActualForOpenGenericService(string name)
         {
             AssertInstancePerDependencyServiceLifetimeMustBeActual<
                 IGenericService<ParameterType1, ParameterType2, ParameterType3>>(
-                typeof(IGenericService<,,>), typeof(GenericService<,,>), lifetime, name);
+                typeof(IGenericService<,,>), typeof(GenericService<,,>), name);
         }
 
         #endregion
@@ -459,7 +454,7 @@ namespace LazyProxy.Autofac.Tests
         private static void AssertSingleInstanceServiceLifetimeMustBeActual<T>(Type typeFrom, Type typeTo, string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeFrom, typeTo, name, ServiceLifetime.SingleInstance);
+            containerBuilder.RegisterLazy(typeFrom, typeTo, name).SingleInstance();
 
             using (var container = containerBuilder.Build()) {
                 var resolves = GetResolves<T>(container, name);
@@ -482,7 +477,7 @@ namespace LazyProxy.Autofac.Tests
             Type typeFrom, Type typeTo, string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeFrom, typeTo, name, ServiceLifetime.InstancePerLifetimeScope);
+            containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerLifetimeScope();
 
             using (var container = containerBuilder.Build()) {
                 var resolves = GetResolves<T>(container, name);
@@ -511,10 +506,10 @@ namespace LazyProxy.Autofac.Tests
         }
 
         private static void AssertInstancePerDependencyServiceLifetimeMustBeActual<T>(
-            Type typeFrom, Type typeTo, ServiceLifetime lifetime, string name)
+            Type typeFrom, Type typeTo, string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeFrom, typeTo, name, lifetime);
+            containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerDependency();
 
             using (var container = containerBuilder.Build()) {
                 var resolves = GetResolves<T>(container, name)
