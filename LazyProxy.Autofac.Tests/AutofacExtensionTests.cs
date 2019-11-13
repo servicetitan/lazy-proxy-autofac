@@ -404,11 +404,9 @@ namespace LazyProxy.Autofac.Tests
 
         #region Private members
 
-        [ThreadStatic]
-        private static string _service1Id;
+        [ThreadStatic] private static string _service1Id;
 
-        [ThreadStatic]
-        private static string _service2Id;
+        [ThreadStatic] private static string _service2Id;
 
         private const string Service1PropertyValue = nameof(Service1PropertyValue);
         private const string Service1MethodValue = nameof(Service1MethodValue);
@@ -456,7 +454,8 @@ namespace LazyProxy.Autofac.Tests
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterLazy(typeFrom, typeTo, name).SingleInstance();
 
-            using (var container = containerBuilder.Build()) {
+            using (var container = containerBuilder.Build())
+            {
                 var resolves = GetResolves<T>(container, name);
                 var rootContainerResolves = resolves.RootContainerResolves;
                 var childContainer1Resolves = resolves.Scope1Resolves;
@@ -479,7 +478,8 @@ namespace LazyProxy.Autofac.Tests
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerLifetimeScope();
 
-            using (var container = containerBuilder.Build()) {
+            using (var container = containerBuilder.Build())
+            {
                 var resolves = GetResolves<T>(container, name);
                 var rootContainerResolves = resolves.RootContainerResolves;
                 var childContainer1Resolves = resolves.Scope1Resolves;
@@ -511,7 +511,8 @@ namespace LazyProxy.Autofac.Tests
             var containerBuilder = new ContainerBuilder();
             containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerDependency();
 
-            using (var container = containerBuilder.Build()) {
+            using (var container = containerBuilder.Build())
+            {
                 var resolves = GetResolves<T>(container, name)
                     .Where(id => id != Guid.Empty)
                     .ToArray();
@@ -521,21 +522,24 @@ namespace LazyProxy.Autofac.Tests
         }
 
         private static Resolves GetResolves<T>(ILifetimeScope container, string name) =>
-            new Resolves {
+            new Resolves
+            {
                 RootContainerResolves = GetContainerResolves<T>(container, name),
                 Scope1Resolves = GetScopeResolves<T>(container, name),
                 Scope2Resolves = GetScopeResolves<T>(container, name)
             };
 
         private static SingleContainerResolves GetContainerResolves<T>(IComponentContext container, string name) =>
-            new SingleContainerResolves {
+            new SingleContainerResolves
+            {
                 Resolve1 = GetResolvedId<T>(container, name),
                 Resolve2 = GetResolvedId<T>(container, name),
             };
 
         private static SingleContainerResolves GetScopeResolves<T>(ILifetimeScope container, string name)
         {
-            using (var scope = container.BeginLifetimeScope()) {
+            using (var scope = container.BeginLifetimeScope())
+            {
                 return GetContainerResolves<T>(scope, name);
             }
         }
@@ -561,7 +565,9 @@ namespace LazyProxy.Autofac.Tests
         }
 
         // ReSharper disable once MemberCanBePrivate.Global
-        public interface IService : IHasId { }
+        public interface IService : IHasId
+        {
+        }
 
         // ReSharper disable once MemberCanBePrivate.Global
         public class Service : IService
@@ -671,7 +677,9 @@ namespace LazyProxy.Autofac.Tests
             }
         }
 
-        public interface IParameterType { }
+        public interface IParameterType
+        {
+        }
 
         public abstract class ParameterTypeBase
         {
@@ -679,13 +687,19 @@ namespace LazyProxy.Autofac.Tests
         }
 
         // ReSharper disable once MemberCanBePrivate.Global
-        public class ParameterType1 : IParameterType { }
+        public class ParameterType1 : IParameterType
+        {
+        }
 
         // ReSharper disable once MemberCanBePrivate.Global
-        public struct ParameterType2 { }
+        public struct ParameterType2
+        {
+        }
 
         // ReSharper disable once MemberCanBePrivate.Global
-        public class ParameterType3 : ParameterTypeBase, IParameterType { }
+        public class ParameterType3 : ParameterTypeBase, IParameterType
+        {
+        }
 
         // ReSharper disable once MemberCanBePrivate.Global
         // ReSharper disable once TypeParameterCanBeVariant
