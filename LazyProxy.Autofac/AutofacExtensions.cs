@@ -12,6 +12,9 @@ namespace LazyProxy.Autofac
     /// </summary>
     public static class AutofacExtensions
     {
+        private const string OpenGenericFactoryRegistrationSourceIsAlreadyAdded =
+            nameof(OpenGenericFactoryRegistrationSourceIsAlreadyAdded);
+
         /// <summary>
         /// Is used to register interface TFrom to class TTo by creation a lazy proxy at runtime.
         /// The real class To will be instantiated only after first method or property execution.
@@ -48,12 +51,16 @@ namespace LazyProxy.Autofac
                 throw new NotSupportedException("The lazy registration is supported only for interfaces.");
             }
 
-            builder.RegisterSource<OpenGenericFactoryRegistrationSource>();
-
             var registrationName = Guid.NewGuid().ToString();
 
             if (typeTo.IsGenericTypeDefinition)
             {
+                if (!builder.Properties.ContainsKey(OpenGenericFactoryRegistrationSourceIsAlreadyAdded))
+                {
+                    builder.RegisterSource<OpenGenericFactoryRegistrationSource>();
+                    builder.Properties.Add(OpenGenericFactoryRegistrationSourceIsAlreadyAdded, true);
+                }
+
                 var nonLazyRegistration = builder.RegisterGeneric(typeTo).Named(registrationName, typeFrom);
                 nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
             }

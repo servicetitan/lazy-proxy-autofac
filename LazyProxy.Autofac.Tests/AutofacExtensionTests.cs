@@ -383,6 +383,50 @@ namespace LazyProxy.Autofac.Tests
             }
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void RegisterLazyMustAddOpenGenericFactoryRegistrationSourceOnlyOnceForOpenGenericTypes(
+            string name)
+        {
+            var containerBuilder = new ContainerBuilder();
+            containerBuilder.RegisterLazy(typeof(IGenericService<,,>), typeof(GenericService<,,>), name);
+            containerBuilder.RegisterLazy(typeof(IGenericService2<>), typeof(GenericService2<>), name);
+
+            using (var container = containerBuilder.Build())
+            {
+                var count = container.ComponentRegistry.Sources
+                    .OfType<OpenGenericFactoryRegistrationSource>()
+                    .Count();
+
+                Assert.Equal(1, count);
+            }
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void RegisterLazyMustNotAddOpenGenericFactoryRegistrationSourceForNonOpenGenericTypes(
+            string name)
+        {
+            var containerBuilder = new ContainerBuilder();
+
+            containerBuilder.RegisterLazy(typeof(IService1), typeof(Service1), name);
+
+            containerBuilder.RegisterLazy(
+                typeof(IGenericService<ParameterType1, ParameterType2, ParameterType3>),
+                typeof(GenericService<ParameterType1, ParameterType2, ParameterType3>), name);
+
+            using (var container = containerBuilder.Build())
+            {
+                var count = container.ComponentRegistry.Sources
+                    .OfType<OpenGenericFactoryRegistrationSource>()
+                    .Count();
+
+                Assert.Equal(0, count);
+            }
+        }
+
         #region Lifetime tests
 
         [Theory]
@@ -788,6 +832,18 @@ namespace LazyProxy.Autofac.Tests
             {
                 Id = Guid.NewGuid();
             }
+        }
+
+        // ReSharper disable once MemberCanBePrivate.Global
+        public interface IGenericService2<T>
+        {
+            // ReSharper disable once UnusedMember.Global
+            T Get(T arg1);
+        }
+
+        private class GenericService2<T> : IGenericService2<T>
+        {
+            public T Get(T arg1) => arg1;
         }
 
         #endregion
