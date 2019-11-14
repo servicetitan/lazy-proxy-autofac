@@ -17,39 +17,16 @@ namespace LazyProxy.Autofac
         /// The real class To will be instantiated only after first method or property execution.
         /// </summary>
         /// <param name="builder">The instance of the Autofac container builder.</param>
-        /// <typeparam name="TFrom">The linked interface.</typeparam>
-        /// <typeparam name="TTo">The linked class.</typeparam>
-        /// <returns>The instance of the Autofac registration builder.</returns>
-        public static IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>
-            RegisterLazy<TFrom, TTo>(this ContainerBuilder builder)
-            where TTo : TFrom where TFrom : class =>
-            builder.RegisterLazy(typeof(TFrom), typeof(TTo), null);
-
-        /// <summary>
-        /// Is used to register interface TFrom to class TTo by creation a lazy proxy at runtime.
-        /// The real class To will be instantiated only after first method or property execution.
-        /// </summary>
-        /// <param name="builder">The instance of the Autofac container builder.</param>
         /// <param name="name">The registration name. Null if named registration is not required.</param>
+        /// <param name="nonLazyRegistrationMutator">A mutator allowing to change the non-lazy registration.</param>
         /// <typeparam name="TFrom">The linked interface.</typeparam>
         /// <typeparam name="TTo">The linked class.</typeparam>
         /// <returns>The instance of the Autofac registration builder.</returns>
         public static IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>
-            RegisterLazy<TFrom, TTo>(this ContainerBuilder builder, string name)
+            RegisterLazy<TFrom, TTo>(this ContainerBuilder builder, string name = null,
+                IRegistrationMutator nonLazyRegistrationMutator = null)
             where TTo : TFrom where TFrom : class =>
-            builder.RegisterLazy(typeof(TFrom), typeof(TTo), name);
-
-        /// <summary>
-        /// Is used to register interface TFrom to class TTo by creation a lazy proxy at runtime.
-        /// The real class To will be instantiated only after first method execution.
-        /// </summary>
-        /// <param name="typeFrom">The linked interface.</param>
-        /// <param name="typeTo">The linked class.</param>
-        /// <param name="builder">The instance of the Autofac container builder.</param>
-        /// <returns>The instance of the Autofac registration builder.</returns>
-        public static IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>
-            RegisterLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo) =>
-            builder.RegisterLazy(typeFrom, typeTo, null);
+            builder.RegisterLazy(typeof(TFrom), typeof(TTo), name, nonLazyRegistrationMutator);
 
         /// <summary>
         /// Is used to register interface TFrom to class TTo by creation a lazy proxy at runtime.
@@ -62,7 +39,7 @@ namespace LazyProxy.Autofac
         /// <param name="nonLazyRegistrationMutator">A mutator allowing to change the non-lazy registration.</param>
         /// <returns>The instance of the Autofac registration builder.</returns>
         public static IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>
-            RegisterLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name,
+            RegisterLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name = null,
                 IRegistrationMutator nonLazyRegistrationMutator = null)
         {
             // There is no way to constraint it on the compilation step.
