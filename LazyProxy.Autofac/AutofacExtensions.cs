@@ -59,9 +59,11 @@ namespace LazyProxy.Autofac
         /// <param name="typeTo">The linked class.</param>
         /// <param name="builder">The instance of the Autofac container builder.</param>
         /// <param name="name">The registration name. Null if named registration is not required.</param>
+        /// <param name="nonLazyRegistrationMutator">A mutator allowing to change the non-lazy registration.</param>
         /// <returns>The instance of the Autofac registration builder.</returns>
         public static IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>
-            RegisterLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name)
+            RegisterLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name,
+                IRegistrationMutator nonLazyRegistrationMutator = null)
         {
             // There is no way to constraint it on the compilation step.
             if (!typeFrom.IsInterface)
@@ -75,11 +77,13 @@ namespace LazyProxy.Autofac
 
             if (typeTo.IsGenericTypeDefinition)
             {
-                builder.RegisterGeneric(typeTo).Named(registrationName, typeFrom);
+                var nonLazyRegistration = builder.RegisterGeneric(typeTo).Named(registrationName, typeFrom);
+                nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
             }
             else
             {
-                builder.RegisterType(typeTo).Named(registrationName, typeFrom);
+                var nonLazyRegistration = builder.RegisterType(typeTo).Named(registrationName, typeFrom);
+                nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
             }
 
             var registration = builder.Register((c, p) =>

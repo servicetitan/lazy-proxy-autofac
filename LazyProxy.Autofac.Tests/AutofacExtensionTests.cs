@@ -4,7 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using Autofac;
+using Autofac.Builder;
 using Autofac.Core;
+using Autofac.Extras.DynamicProxy;
+using Castle.DynamicProxy;
 using Xunit;
 
 [assembly: InternalsVisibleTo("LazyProxy.DynamicTypes")]
@@ -350,6 +353,36 @@ namespace LazyProxy.Autofac.Tests
             }
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void NonLazyRegistrationMutatorMustBeApplied(string name)
+        {
+            const string arg1 = nameof(arg1);
+            const string arg2 = nameof(arg2);
+
+            var containerBuilder = new ContainerBuilder();
+            var mutator = new FooMutator();
+
+            containerBuilder.RegisterType<FooInterceptor>().AsSelf();
+            containerBuilder.RegisterLazy(typeof(IService1), typeof(Service1), name, mutator);
+            containerBuilder.RegisterType<Service2>().As<IService2>();
+
+            using (var container = containerBuilder.Build())
+            {
+                var service = name == null
+                    ? container.Resolve<IService1>()
+                    : container.ResolveNamed<IService1>(name);
+
+                var result = service.Method(s => s.Method(arg1), arg2);
+
+                Assert.Equal(
+                    $"{Service1MethodValue}{Service2MethodValue}{arg1}{arg2}" +
+                    $"{FooInterceptor.InterceptionSuffix}",
+                    result);
+            }
+        }
+
         #region Lifetime tests
 
         [Theory]
@@ -554,6 +587,29 @@ namespace LazyProxy.Autofac.Tests
 
         private static void AssertAllInstancesAreDifferent(params Guid[] keys) =>
             Assert.True(keys.Distinct().Count() == keys.Length, "All instances must be different.");
+
+        #endregion
+
+        #region Private members for mutator testing
+
+        private class FooMutator : IRegistrationMutator
+        {
+            public IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle>
+                Mutate<TLimit, TActivatorData, TRegistrationStyle>(
+                    IRegistrationBuilder<TLimit, TActivatorData, TRegistrationStyle> registration) =>
+                registration.EnableInterfaceInterceptors().InterceptedBy(typeof(FooInterceptor));
+        }
+
+        private class FooInterceptor : IInterceptor
+        {
+            public const string InterceptionSuffix = "Intercepted";
+
+            public void Intercept(IInvocation invocation)
+            {
+                invocation.Proceed();
+                invocation.ReturnValue = (string) invocation.ReturnValue + InterceptionSuffix;
+            }
+        }
 
         #endregion
 
