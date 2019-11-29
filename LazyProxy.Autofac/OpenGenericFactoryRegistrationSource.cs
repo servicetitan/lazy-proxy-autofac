@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Autofac;
+using Autofac.Builder;
 using Autofac.Core;
 using Autofac.Core.Activators.Delegate;
 using Autofac.Core.Lifetime;
@@ -15,6 +16,9 @@ namespace LazyProxy.Autofac
     /// </summary>
     public sealed class OpenGenericFactoryRegistrationSource : IRegistrationSource
     {
+        private readonly RegistrationData _registrationData;
+        private readonly SimpleActivatorData _activatorData;
+
         /// <summary>
         /// Name of the key to get the closed generic type from the named parameters.
         /// </summary>
@@ -22,6 +26,19 @@ namespace LazyProxy.Autofac
 
         /// <inheritdoc />
         public bool IsAdapterForIndividualComponents => false;
+
+        /// <summary>
+        /// Creates a new instance of <see cref="OpenGenericFactoryRegistrationSource"/>.
+        /// </summary>
+        /// <param name="registrationData">Registration data.</param>
+        /// <param name="activatorData">Activator data.</param>
+        public OpenGenericFactoryRegistrationSource(
+            RegistrationData registrationData,
+            SimpleActivatorData activatorData)
+        {
+            _registrationData = registrationData ?? throw new ArgumentNullException(nameof(registrationData));
+            _activatorData = activatorData ?? throw new ArgumentNullException(nameof(activatorData));
+        }
 
         /// <inheritdoc />
         public IEnumerable<IComponentRegistration> RegistrationsFor(
@@ -43,29 +60,32 @@ namespace LazyProxy.Autofac
             }
 
             var definitionService = (IServiceWithType) swt.ChangeType(swt.ServiceType.GetGenericTypeDefinition());
-            var factoryRegistrations = registrationAccessor((Service) definitionService);
 
-            return factoryRegistrations
-                .Where(factoryRegistration => factoryRegistration.Activator is DelegateActivator)
-                .Select(factoryRegistration =>
-                {
-                    return new ComponentRegistration(
-                        Guid.NewGuid(),
-                        new DelegateActivator(swt.ServiceType, (c, parameters) =>
+            if (!_registrationData.Services.Cast<IServiceWithType>().Any(s => s.Equals(definitionService)))
+            {
+                return Enumerable.Empty<IComponentRegistration>();
+            }
+
+            return new[]
+            {
+                new ComponentRegistration(
+                    Guid.NewGuid(),
+                    new DelegateActivator(swt.ServiceType, (c, parameters) =>
+                    {
+                        var activator = (DelegateActivator) _activatorData.Activator;
+                        var newParameters = parameters.Concat(new[]
                         {
-                            var activator = (DelegateActivator) factoryRegistration.Activator;
-                            var newParameters = parameters.Concat(new[]
-                            {
-                                new NamedParameter(ServiceType, swt.ServiceType)
-                            });
-                            return activator.ActivateInstance(c, newParameters);
-                        }),
-                        GetLifetime(factoryRegistration.Lifetime),
-                        factoryRegistration.Sharing,
-                        factoryRegistration.Ownership,
-                        new[] {service},
-                        new Dictionary<string, object>());
-                });
+                            new NamedParameter(ServiceType, swt.ServiceType)
+                        });
+
+                        return activator.ActivateInstance(c, newParameters);
+                    }),
+                    GetLifetime(_registrationData.Lifetime),
+                    _registrationData.Sharing,
+                    _registrationData.Ownership,
+                    new[] {service},
+                    new Dictionary<string, object>())
+            };
         }
 
         private static IComponentLifetime GetLifetime(IComponentLifetime lifetime)

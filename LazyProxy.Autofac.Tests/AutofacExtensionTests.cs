@@ -386,26 +386,6 @@ namespace LazyProxy.Autofac.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("name")]
-        public void RegisterLazyMustAddOpenGenericFactoryRegistrationSourceOnlyOnceForOpenGenericTypes(
-            string name)
-        {
-            var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeof(IGenericService<,,>), typeof(GenericService<,,>), name);
-            containerBuilder.RegisterLazy(typeof(IGenericService2<>), typeof(GenericService2<>), name);
-
-            using (var container = containerBuilder.Build())
-            {
-                var count = container.ComponentRegistry.Sources
-                    .OfType<OpenGenericFactoryRegistrationSource>()
-                    .Count();
-
-                Assert.Equal(1, count);
-            }
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("name")]
         public void RegisterLazyMustNotAddOpenGenericFactoryRegistrationSourceForNonOpenGenericTypes(
             string name)
         {
@@ -475,6 +455,58 @@ namespace LazyProxy.Autofac.Tests
             AssertInstancePerDependencyServiceLifetimeMustBeActual<
                 IGenericService<ParameterType1, ParameterType2, ParameterType3>>(
                 typeof(IGenericService<,,>), typeof(GenericService<,,>), name);
+        }
+
+        #endregion
+
+        #region RegisterGenericFactory tests
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void RegisterGenericFactoryMustBeCorrect(string name)
+        {
+            void Test<T>() where T : IGenericService<ParameterType1, ParameterType2, ParameterType3>
+            {
+                var parameters = new Parameter[]
+                {
+                    new NamedParameter("key1", "value1"),
+                    new NamedParameter("key2", "value2")
+                };
+
+                var containerBuilder = new ContainerBuilder();
+                containerBuilder.RegisterGenericFactory(typeof(T).GetGenericTypeDefinition(), name,
+                    (c, t, n, p) =>
+                    {
+                        Assert.Same(typeof(T), t);
+                        Assert.Same(name, n);
+
+                        foreach (var parameter in parameters)
+                        {
+                            Assert.Contains(parameter, p);
+                        }
+
+                        return new GenericService<ParameterType1, ParameterType2, ParameterType3>();
+                    });
+
+                using (var container = containerBuilder.Build())
+                {
+                    var service = name == null
+                        ? container.Resolve<T>(parameters)
+                        : container.ResolveNamed<T>(name, parameters);
+
+                    var result = service.Get(new ParameterType1(), new ParameterType2(), 42);
+
+                    Assert.Equal(
+                        $"{typeof(ParameterType1).Name}_" +
+                        $"{typeof(ParameterType2).Name}_" +
+                        $"{typeof(int).Name}",
+                        result.Value);
+                }
+            }
+
+            Test<IGenericService<ParameterType1, ParameterType2, ParameterType3>>();
+            Test<GenericService<ParameterType1, ParameterType2, ParameterType3>>();
         }
 
         #endregion
@@ -839,11 +871,6 @@ namespace LazyProxy.Autofac.Tests
         {
             // ReSharper disable once UnusedMember.Global
             T Get(T arg1);
-        }
-
-        private class GenericService2<T> : IGenericService2<T>
-        {
-            public T Get(T arg1) => arg1;
         }
 
         #endregion
