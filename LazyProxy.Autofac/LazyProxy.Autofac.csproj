@@ -17,7 +17,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Autofac" Version="6.0.0" />
+        <PackageReference Include="Autofac" Version="5.2.0" />
         <PackageReference Include="LazyProxy" Version="1.0.0" />
     </ItemGroup>
 

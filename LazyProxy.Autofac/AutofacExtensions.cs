@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using Autofac;
 using Autofac.Builder;
 using Autofac.Core;
-using Autofac.Features.OpenGenerics;
+using Autofac.Core.Activators.Delegate;
 
 namespace LazyProxy.Autofac
 {
@@ -12,8 +14,27 @@ namespace LazyProxy.Autofac
     /// </summary>
     public static class AutofacExtensions
     {
+        private static readonly ConstructorInfo RegistrationBuilderConstructor;
+
+        static AutofacExtensions()
+        {
+            // There is no way to create RegistrationBuilder with TypedService / KeyedService without reflection.
+            RegistrationBuilderConstructor = typeof(ILifetimeScope).Assembly
+                .GetType("Autofac.Builder.RegistrationBuilder`3")
+                .MakeGenericType(
+                    typeof(object),
+                    typeof(SimpleActivatorData),
+                    typeof(SingleRegistrationStyle))
+                .GetConstructor(new[]
+                {
+                    typeof(Service),
+                    typeof(SimpleActivatorData),
+                    typeof(SingleRegistrationStyle)
+                });
+        }
+
         /// <summary>
-        /// Is used to register non open generic interface TFrom to class TTo by creation a lazy proxy at runtime.
+        /// Is used to register interface TFrom to class TTo by creation a lazy proxy at runtime.
         /// The real class To will be instantiated only after first method or property execution.
         /// </summary>
         /// <param name="builder">The instance of the Autofac container builder.</param>
@@ -29,7 +50,7 @@ namespace LazyProxy.Autofac
             builder.RegisterLazy(typeof(TFrom), typeof(TTo), name, nonLazyRegistrationMutator);
 
         /// <summary>
-        /// Is used to register non open generic interface TFrom to class TTo by creation a lazy proxy at runtime.
+        /// Is used to register interface TFrom to class TTo by creation a lazy proxy at runtime.
         /// The real class To will be instantiated only after first method or property execution.
         /// </summary>
         /// <param name="typeFrom">The linked interface.</param>
@@ -45,22 +66,28 @@ namespace LazyProxy.Autofac
             // There is no way to constraint it on the compilation step.
             if (!typeFrom.IsInterface)
             {
-                throw new NotSupportedException(
-                    "The lazy registration is supported only for interfaces.");
-            }
-
-            if (typeTo.IsGenericTypeDefinition)
-            {
-                throw new ArgumentException(
-                    $"{typeFrom} is an open generic type definition. Use the 'RegisterGenericLazy' method instead.");
+                throw new NotSupportedException("The lazy registration is supported only for interfaces.");
             }
 
             var registrationName = Guid.NewGuid().ToString();
-            var nonLazyRegistration = builder.RegisterType(typeTo).Named(registrationName, typeFrom);
-            nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
+            IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle> registration;
 
-            var registration = builder.Register((c, p) =>
-                CreateLazyProxy(c.Resolve<IComponentContext>(), typeFrom, registrationName, p));
+            if (typeTo.IsGenericTypeDefinition)
+            {
+                var nonLazyRegistration = builder.RegisterGeneric(typeTo).Named(registrationName, typeFrom);
+                nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
+
+                registration = builder.RegisterGenericFactory(typeFrom, name,
+                    (c, t, n, p) => CreateLazyProxy(c, t, registrationName, p));
+            }
+            else
+            {
+                var nonLazyRegistration = builder.RegisterType(typeTo).Named(registrationName, typeFrom);
+                nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
+
+                registration = builder.Register(
+                    (c, p) => CreateLazyProxy(c.Resolve<IComponentContext>(), typeFrom, registrationName, p));
+            }
 
             return name == null
                 ? registration.As(typeFrom)
@@ -68,45 +95,44 @@ namespace LazyProxy.Autofac
         }
 
         /// <summary>
-        /// Is used to register open generic interface TFrom to class TTo by creation a lazy proxy at runtime.
-        /// The real class To will be instantiated only after first method or property execution.
+        /// Registers a delegate as a component for open generic types.
         /// </summary>
-        /// <param name="typeFrom">The linked interface.</param>
-        /// <param name="typeTo">The linked class.</param>
         /// <param name="builder">The instance of the Autofac container builder.</param>
-        /// <param name="name">The registration name. Null if named registration is not required.</param>
-        /// <param name="nonLazyRegistrationMutator">A mutator allowing to change the non-lazy registration.</param>
-        /// <returns>The instance of the Autofac registration builder.</returns>
-        public static IRegistrationBuilder<object, OpenGenericDelegateActivatorData, DynamicRegistrationStyle>
-            RegisterGenericLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name = null,
-                IRegistrationMutator nonLazyRegistrationMutator = null)
+        /// <param name="type"><see cref="Type"/> of the registered component.</param>
+        /// <param name="name">Name of the registered component.</param>
+        /// <param name="factory">The delegate to register.</param>
+        /// <returns>Registration builder allowing the registration to be configured.</returns>
+        public static IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>
+            RegisterGenericFactory(this ContainerBuilder builder, Type type, string name,
+                Func<IComponentContext, Type, string, Parameter[], object> factory)
         {
-            // There is no way to constraint it on the compilation step.
-            if (!typeFrom.IsInterface)
-            {
-                throw new NotSupportedException(
-                    "The lazy registration is supported only for interfaces.");
-            }
+            var registration = (IRegistrationBuilder<object, SimpleActivatorData, SingleRegistrationStyle>)
+                RegistrationBuilderConstructor.Invoke(new[]
+                {
+                    string.IsNullOrEmpty(name)
+                        ? (object) new TypedService(type)
+                        : new KeyedService(name, type),
 
-            if (!typeTo.IsGenericTypeDefinition)
-            {
-                throw new ArgumentException(
-                    $"{typeFrom} is not an open generic type definition. Use the 'RegisterLazy' method instead.");
-            }
+                    new SimpleActivatorData(new DelegateActivator(type,
+                        (c, p) =>
+                        {
+                            var parameters = p.ToArray();
+                            var serviceType = parameters.Named<Type>(OpenGenericFactoryRegistrationSource.ServiceType);
+                            var context = c.Resolve<IComponentContext>();
 
-            var registrationName = Guid.NewGuid().ToString();
-            var nonLazyRegistration = builder.RegisterGeneric(typeTo).Named(registrationName, typeFrom);
-            nonLazyRegistrationMutator?.Mutate(nonLazyRegistration);
+                            return factory(context, serviceType, name, parameters);
+                        })),
 
-            var registration = builder.RegisterGeneric((c, t, p) =>
-            {
-                var closedTypeFrom = typeFrom.MakeGenericType(t);
-                return CreateLazyProxy(c.Resolve<IComponentContext>(), closedTypeFrom, registrationName, p);
-            });
+                    new SingleRegistrationStyle()
+                });
 
-            return name == null
-                ? registration.As(typeFrom)
-                : registration.Named(name, typeFrom);
+            registration.RegistrationData.DeferredCallback = builder.RegisterCallback(
+                cr => cr.AddRegistrationSource(
+                    new OpenGenericFactoryRegistrationSource(
+                        registration.RegistrationData,
+                        registration.ActivatorData)));
+
+            return registration;
         }
 
         private static object CreateLazyProxy(
