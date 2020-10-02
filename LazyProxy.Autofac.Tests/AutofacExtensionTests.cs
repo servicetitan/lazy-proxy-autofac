@@ -19,8 +19,34 @@ namespace LazyProxy.Autofac.Tests
         [Theory]
         [InlineData(null)]
         [InlineData("name")]
-        public void RegistrationMustThrowNotSupportedExceptionForNonInterfaces(string name) =>
-            Assert.Throws<NotSupportedException>(() => new ContainerBuilder().RegisterLazy<Service1, Service1>(name));
+        public void RegisterLazyMustThrowNotSupportedExceptionForNonInterfaces(string name) =>
+            Assert.Throws<NotSupportedException>(() =>
+                new ContainerBuilder().RegisterLazy<Service1, Service1>(name));
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void RegisterGenericLazyMustThrowNotSupportedExceptionForNonInterfaces(string name) =>
+            Assert.Throws<NotSupportedException>(() =>
+                new ContainerBuilder().RegisterGenericLazy(
+                    typeof(GenericService<,,>),
+                    typeof(GenericService<,,>), name));
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void RegisterLazyMustThrowArgumentExceptionForOpenGenericInterface(string name) =>
+            Assert.Throws<ArgumentException>(() =>
+                new ContainerBuilder().RegisterLazy(
+                    typeof(IGenericService<,,>),
+                    typeof(GenericService<,,>), name));
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("name")]
+        public void RegisterGenericLazyMustThrowArgumentExceptionForNonOpenGenericInterface(string name) =>
+            Assert.Throws<ArgumentException>(() =>
+                new ContainerBuilder().RegisterGenericLazy(typeof(IService1), typeof(Service1), name));
 
         [Theory]
         [InlineData(null)]
@@ -335,7 +361,7 @@ namespace LazyProxy.Autofac.Tests
         public void OpenGenericServiceMustBeResolved(string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeof(IGenericService<,,>), typeof(GenericService<,,>), name);
+            containerBuilder.RegisterGenericLazy(typeof(IGenericService<,,>), typeof(GenericService<,,>), name);
 
             using (var container = containerBuilder.Build())
             {
@@ -380,30 +406,6 @@ namespace LazyProxy.Autofac.Tests
                     $"{Service1MethodValue}{Service2MethodValue}{arg1}{arg2}" +
                     $"{FooInterceptor.InterceptionSuffix}",
                     result);
-            }
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("name")]
-        public void RegisterLazyMustNotAddOpenGenericFactoryRegistrationSourceForNonOpenGenericTypes(
-            string name)
-        {
-            var containerBuilder = new ContainerBuilder();
-
-            containerBuilder.RegisterLazy(typeof(IService1), typeof(Service1), name);
-
-            containerBuilder.RegisterLazy(
-                typeof(IGenericService<ParameterType1, ParameterType2, ParameterType3>),
-                typeof(GenericService<ParameterType1, ParameterType2, ParameterType3>), name);
-
-            using (var container = containerBuilder.Build())
-            {
-                var count = container.ComponentRegistry.Sources
-                    .OfType<OpenGenericFactoryRegistrationSource>()
-                    .Count();
-
-                Assert.Equal(0, count);
             }
         }
 
@@ -459,58 +461,6 @@ namespace LazyProxy.Autofac.Tests
 
         #endregion
 
-        #region RegisterGenericFactory tests
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("name")]
-        public void RegisterGenericFactoryMustBeCorrect(string name)
-        {
-            void Test<T>() where T : IGenericService<ParameterType1, ParameterType2, ParameterType3>
-            {
-                var parameters = new Parameter[]
-                {
-                    new NamedParameter("key1", "value1"),
-                    new NamedParameter("key2", "value2")
-                };
-
-                var containerBuilder = new ContainerBuilder();
-                containerBuilder.RegisterGenericFactory(typeof(T).GetGenericTypeDefinition(), name,
-                    (c, t, n, p) =>
-                    {
-                        Assert.Same(typeof(T), t);
-                        Assert.Same(name, n);
-
-                        foreach (var parameter in parameters)
-                        {
-                            Assert.Contains(parameter, p);
-                        }
-
-                        return new GenericService<ParameterType1, ParameterType2, ParameterType3>();
-                    });
-
-                using (var container = containerBuilder.Build())
-                {
-                    var service = name == null
-                        ? container.Resolve<T>(parameters)
-                        : container.ResolveNamed<T>(name, parameters);
-
-                    var result = service.Get(new ParameterType1(), new ParameterType2(), 42);
-
-                    Assert.Equal(
-                        $"{typeof(ParameterType1).Name}_" +
-                        $"{typeof(ParameterType2).Name}_" +
-                        $"{typeof(int).Name}",
-                        result.Value);
-                }
-            }
-
-            Test<IGenericService<ParameterType1, ParameterType2, ParameterType3>>();
-            Test<GenericService<ParameterType1, ParameterType2, ParameterType3>>();
-        }
-
-        #endregion
-
         #region Private members
 
         [ThreadStatic] private static string _service1Id;
@@ -561,7 +511,14 @@ namespace LazyProxy.Autofac.Tests
         private static void AssertSingleInstanceServiceLifetimeMustBeActual<T>(Type typeFrom, Type typeTo, string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeFrom, typeTo, name).SingleInstance();
+            if (typeFrom.IsGenericTypeDefinition)
+            {
+                containerBuilder.RegisterGenericLazy(typeFrom, typeTo, name).SingleInstance();
+            }
+            else
+            {
+                containerBuilder.RegisterLazy(typeFrom, typeTo, name).SingleInstance();
+            }
 
             using (var container = containerBuilder.Build())
             {
@@ -585,7 +542,14 @@ namespace LazyProxy.Autofac.Tests
             Type typeFrom, Type typeTo, string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerLifetimeScope();
+            if (typeFrom.IsGenericTypeDefinition)
+            {
+                containerBuilder.RegisterGenericLazy(typeFrom, typeTo, name).InstancePerLifetimeScope();
+            }
+            else
+            {
+                containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerLifetimeScope();
+            }
 
             using (var container = containerBuilder.Build())
             {
@@ -618,7 +582,14 @@ namespace LazyProxy.Autofac.Tests
             Type typeFrom, Type typeTo, string name)
         {
             var containerBuilder = new ContainerBuilder();
-            containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerDependency();
+            if (typeFrom.IsGenericTypeDefinition)
+            {
+                containerBuilder.RegisterGenericLazy(typeFrom, typeTo, name).InstancePerDependency();
+            }
+            else
+            {
+                containerBuilder.RegisterLazy(typeFrom, typeTo, name).InstancePerDependency();
+            }
 
             using (var container = containerBuilder.Build())
             {
@@ -864,13 +835,6 @@ namespace LazyProxy.Autofac.Tests
             {
                 Id = Guid.NewGuid();
             }
-        }
-
-        // ReSharper disable once MemberCanBePrivate.Global
-        public interface IGenericService2<T>
-        {
-            // ReSharper disable once UnusedMember.Global
-            T Get(T arg1);
         }
 
         #endregion
