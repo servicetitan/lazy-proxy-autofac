@@ -13,8 +13,8 @@ namespace LazyProxy.Autofac
     public static class AutofacExtensions
     {
         /// <summary>
-        /// Is used to register non open generic interface TFrom to class TTo by creation a lazy proxy at runtime.
-        /// The real class To will be instantiated only after first method or property execution.
+        /// Registers a mapping of a non-open generic interface TFrom to the class TTo via run-time generated lazy
+        /// proxy type. The real class TTo will be instantiated only after first method or property execution.
         /// </summary>
         /// <param name="builder">The instance of the Autofac container builder.</param>
         /// <param name="name">The registration name. Null if named registration is not required.</param>
@@ -29,8 +29,8 @@ namespace LazyProxy.Autofac
             builder.RegisterLazy(typeof(TFrom), typeof(TTo), name, nonLazyRegistrationMutator);
 
         /// <summary>
-        /// Is used to register non open generic interface TFrom to class TTo by creation a lazy proxy at runtime.
-        /// The real class To will be instantiated only after first method or property execution.
+        /// Registers a mapping of a non-open generic interface TFrom to the class TTo via run-time generated lazy
+        /// proxy type. The real class TTo will be instantiated only after first method or property execution.
         /// </summary>
         /// <param name="typeFrom">The linked interface.</param>
         /// <param name="typeTo">The linked class.</param>
@@ -42,7 +42,6 @@ namespace LazyProxy.Autofac
             RegisterLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name = null,
                 IRegistrationMutator nonLazyRegistrationMutator = null)
         {
-            // There is no way to constraint it on the compilation step.
             if (!typeFrom.IsInterface)
             {
                 throw new NotSupportedException(
@@ -68,8 +67,8 @@ namespace LazyProxy.Autofac
         }
 
         /// <summary>
-        /// Is used to register open generic interface TFrom to class TTo by creation a lazy proxy at runtime.
-        /// The real class To will be instantiated only after first method or property execution.
+        /// Registers a mapping of an open generic interface TFrom to the class TTo via run-time generated lazy
+        /// proxy type. The real class TTo will be instantiated only after first method or property execution.
         /// </summary>
         /// <param name="typeFrom">The linked interface.</param>
         /// <param name="typeTo">The linked class.</param>
@@ -81,7 +80,6 @@ namespace LazyProxy.Autofac
             RegisterGenericLazy(this ContainerBuilder builder, Type typeFrom, Type typeTo, string name = null,
                 IRegistrationMutator nonLazyRegistrationMutator = null)
         {
-            // There is no way to constraint it on the compilation step.
             if (!typeFrom.IsInterface)
             {
                 throw new NotSupportedException(
