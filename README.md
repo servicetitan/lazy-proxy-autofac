@@ -1,29 +1,62 @@
-# Lazy injection for Autofac container
+# Lazy Dependency Injection for Autofac Container
 
-A [LazyProxy](https://github.com/servicetitan/lazy-proxy) can be used for IoC containers to change the resolving behaviour.
+A [LazyProxy](https://github.com/servicetitan/lazy-proxy) can be used for IoC containers to improve performance by changing the resolve behavior.
 
-Dependencies registered as lazy are created as dynamic proxy objects built in real time, but the real classes are resolved only after the first execution of proxy method or property.
+More info can be found in the article about [Lazy Dependency Injection for .NET](https://dev.to/hypercodeplace/lazy-dependency-injection-37en).
 
-Also dynamic lazy proxy allows injection of circular dependencies.
+## Get Packages
 
-```C#
+The library provides in NuGet.
+
+```
+Install-Package LazyProxy.Autofac
+```
+
+## Get Started
+
+Consider the following service:
+
+```CSharp
+public interface IMyService
+{
+    void Foo();
+}
+
+public class MyService : IMyService
+{
+    public MyService() => Console.WriteLine("Ctor");
+    public void Foo() => Console.WriteLine("Foo");
+}
+```
+
+A lazy registration for this service can be added like this:
+
+```CSharp
+// Creating a container builder
 var containerBuilder = new ContainerBuilder();
-containerBuilder.RegisterLazy<IFoo, Foo>();
-var container = containerBuilder.Build();
 
-Console.WriteLine("Resolving service...");
-var foo = container.Resolve<IFoo>();
+// Adding a lazy registration
+containerBuilder.RegisterLazy<IMyService, MyService>();
 
-Console.WriteLine("Bar execution...");
-foo.Bar();
+// Building a container
+using var container = containerBuilder.Build();
 
-// Resolving service...
-// Bar execution...
-// Hello from ctor
-// Hello from Bar
+Console.WriteLine("Resolving the service...");
+var service = container.Resolve<IMyService>();
 
+Console.WriteLine("Executing the 'Foo' method...");
+service.Foo();
+```
+
+The output for this example:
+
+```
+Resolving the service...
+Executing the 'Foo' method...
+Ctor
+Foo
 ```
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0. - see the [LICENSE](https://github.com/servicetitan/lazy-proxy-unity/blob/master/LICENSE) file for details.
+This project is licensed under the Apache License, Version 2.0. - see the [LICENSE](https://github.com/servicetitan/lazy-proxy-Autofac/blob/master/LICENSE) file for details.
