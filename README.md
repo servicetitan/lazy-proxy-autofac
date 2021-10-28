@@ -1,3 +1,5 @@
+[![Build LazyProxy.Autofac](https://github.com/servicetitan/lazy-proxy-autofac/actions/workflows/ci.yml/badge.svg)](https://github.com/servicetitan/lazy-proxy-autofac/actions/workflows/ci.yml)
+
 # Lazy Dependency Injection for Autofac Container
 
 A [LazyProxy](https://github.com/servicetitan/lazy-proxy) can be used for IoC containers to improve performance by changing the resolve behavior.
