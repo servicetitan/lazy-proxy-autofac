@@ -1,25 +1,21 @@
-name: .NET
+name: Build LazyProxy.Autofac
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  - push
+  - pull_request
+  - workflow_dispatch
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: 3.1.101
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test ./LazyProxy.Autofac.Tests/LazyProxy.Autofac.Tests.csproj --no-build --verbosity normal
+      - uses: actions/checkout@v1
+      - name: Setup .NET Core 3.1.101
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.101
+      - name: Build
+        run: find . -type f \( -iname "*.csproj" \) | xargs -n1 dotnet build
+      - name: Test
+        run: dotnet test ./LazyProxy.Autofac.Tests/LazyProxy.Autofac.Tests.csproj --no-build --verbosity normal
