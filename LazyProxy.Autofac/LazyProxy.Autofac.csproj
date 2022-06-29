@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <Version>2.1.0</Version>
+        <Version>2.2.0</Version>
         <PackageId>LazyProxy.Autofac</PackageId>
         <Company>ServiceTitan, Inc.</Company>
         <Authors>ServiceTitan, Inc.</Authors>
@@ -17,7 +17,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Autofac" Version="6.3.0" />
+        <PackageReference Include="Autofac" Version="6.4.0" />
         <PackageReference Include="LazyProxy" Version="1.0.2" />
     </ItemGroup>
 
